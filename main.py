@@ -1,8 +1,6 @@
 #!/usr/bin/python
-import asyncio
-import os
+import asyncio, traceback
 from bleak import BleakClient
-from datetime import datetime
 
 from kivy.app import async_runTouchApp
 from kivy.lang.builder import Builder
@@ -12,12 +10,8 @@ from android.storage import primary_external_storage_path
 perms = [
     Permission.BLUETOOTH_CONNECT,
     Permission.BLUETOOTH_SCAN,
-    Permission.WRITE_EXTERNAL_STORAGE,
-    Permission.READ_EXTERNAL_STORAGE
 ]
 request_permissions(perms)
-
-dirname = "Download/share/ecg"
 
 kv = '''
 BoxLayout:
@@ -55,12 +49,17 @@ def tip_temp(array):
     return toCelsius(tip)
 
 async def monitor(root):
-    async with BleakClient(ADDRESS) as client:
-        while True:
-            data = await client.read_gatt_char("7edda774-045e-4bbf-909b-45d1991a2876")
-            ambient = toCelsius(convertAmbient(data))
-            tip = tip_temp(data)
-            root.ids.label.text = f"{ambient:.2f} / {tip:.2f}"
+    try:
+        async with BleakClient(ADDRESS) as client:
+            while True:
+                data = await client.read_gatt_char("7edda774-045e-4bbf-909b-45d1991a2876")
+                ambient = toCelsius(convertAmbient(data))
+                tip = tip_temp(data)
+                root.ids.label.text = f"{ambient:.2f} / {tip:.2f}"
+    except:
+        err = traceback.format_exc()
+        print("error MeaterApp exception:", err)
+        root.ids.label.text = err
 
 root = Builder.load_string(kv)
 other_task = asyncio.ensure_future(monitor(root))
