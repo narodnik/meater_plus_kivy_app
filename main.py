@@ -57,7 +57,7 @@ def tip_temp(array):
 async def monitor(root):
     async with BleakClient(ADDRESS) as client:
         while True:
-            data = await client.read_gatt_char(35)
+            data = await client.read_gatt_char("7edda774-045e-4bbf-909b-45d1991a2876")
             ambient = toCelsius(convertAmbient(data))
             tip = tip_temp(data)
             root.ids.label.text = f"{ambient:.2f} / {tip:.2f}"
