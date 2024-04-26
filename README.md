@@ -1,7 +1,5 @@
 virtualenv venv
-./venv/bin/activate
-pip install kivy
-pip install buildozer
-pip install bleak
+source venv/bin/activate
+pip install kivy buildozer bleak cython
 buildozer android debug
 
