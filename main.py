@@ -29,32 +29,40 @@ async def run_app(root, other_task):
 
 ADDRESS = "B8:1F:5E:95:64:8B"
 
-def bytesToInt(byte0, byte1):
-    return byte1*256+byte0
+def get_signed_internal_temp(b10, b11):
+    # Get a short int from b10 b11 in little endian
+    a10 = (b10 & 255) * 256 + (b11 & 255);
+    if a10 >= 2048:
+        return a10 | (-4096)
+    return a10
 
-def convertAmbient(array): 
-    tip = bytesToInt(array[0], array[1])
-    ra  = bytesToInt(array[2], array[3])
-    oa  = bytesToInt(array[4], array[5])
-    return tip + max(
-        0,
-        (ra - min(48, oa)) * 16 * 589 / 1487
-    )
+def ambient_from_temperature_reading(i10, i11, i12):
+    return i10 + int(max(0.0, ((i11 - min(48, i12)) * 9424) / 1487.0))
 
-def toCelsius(value):
-    return (float(value)+8.0)/16.0
-
-def tip_temp(array):
-    tip = bytesToInt(array[0], array[1])
-    return toCelsius(tip)
+def to_celsius(i10):
+    if i10 > 0:
+        return (i10 + 8) / 32
+    elif i10 < 0:
+        return (i10 - 8) / 32
+    return 0
 
 async def monitor(root):
     try:
         async with BleakClient(ADDRESS) as client:
             while True:
                 data = await client.read_gatt_char("7edda774-045e-4bbf-909b-45d1991a2876")
-                ambient = toCelsius(convertAmbient(data))
-                tip = tip_temp(data)
+
+                internal = get_signed_internal_temp(data[1], data[0])
+                ambient = get_signed_internal_temp(data[3], data[2])
+                initial_ambient_offset = get_signed_internal_temp(data[5], data[4])
+                lowest_ambient_offset = get_signed_internal_temp(data[5], data[4])
+
+                ambient = 2 * max(0, ambient_from_temperature_reading(internal, ambient, initial_ambient_offset))
+                internal *= 2
+
+                tip = to_celsius(internal)
+                ambient = to_celsius(ambient)
+
                 root.ids.label.text = f"{ambient:.2f} / {tip:.2f}"
     except:
         err = traceback.format_exc()
